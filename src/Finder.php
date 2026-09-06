@@ -6,6 +6,7 @@
 
 namespace GlpiPlugin\Glpipalette;
 
+use CommonDBTM;
 use CommonITILObject;
 use Search;
 
@@ -216,7 +217,15 @@ final class Finder
         }
 
         $obj = getItemForItemtype($itemtype);
-        if (!($obj instanceof CommonDBTM) || !$obj->getFromDB($id) || !$obj->canViewItem()) {
+
+        // `can()` rather than `canViewItem()`: the latter is only half of
+        // core's read contract — for most types it is `checkEntity()` and
+        // nothing else, so on its own it would hand back the name of any
+        // contract, document or supplier in the caller's entities whether or
+        // not their profile grants the type at all. `can($id, READ)` is
+        // `canView() && canViewItem()`, and it fires the ITEM_CAN hook other
+        // plugins restrict through. Same gate as search() above.
+        if (!($obj instanceof CommonDBTM) || !$obj->can($id, READ)) {
             return null;
         }
 
