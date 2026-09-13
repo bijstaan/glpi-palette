@@ -3,7 +3,7 @@
 A Ctrl/Cmd+K launcher for GLPI. One box reaching records, every menu
 destination, and a handful of named actions.
 
-![Command palette](docs/screenshots/palette-search.png)
+![Command palette](docs/screenshots/palette-01-search.png)
 
 ## Compared to core's Find menu
 

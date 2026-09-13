@@ -3,9 +3,12 @@
 // Drive the glpipalette command palette: open, search records, scope, jump,
 // commands, keyboard navigation, and recents.
 const { chromium } = require('playwright');
+const path = require('path');
+const { openDark, audit } = require('./dark');
 
 const BASE = 'http://localhost:8081';
 const SHOTS = process.env.SHOT_DIR || '.';
+const DARK_SHOTS = path.join(SHOTS, 'dark');
 
 const fail = [];
 function check(name, cond, detail) {
@@ -119,6 +122,49 @@ async function type(page, text) {
   check('Escape closes', !s.open);
 
   check('no page errors', errs.length === 0, errs.join(' | '));
+
+  // --- 10. The dark palette ---------------------------------------------
+  //
+  // The palette is an overlay this plugin paints itself, so nothing in GLPI's
+  // own dark stylesheet covers it: every colour in it is one this plugin chose,
+  // and the only way to know they survive a black body is to open it on one.
+  require('fs').mkdirSync(DARK_SHOTS, { recursive: true });
+  console.log('\nswitching to the dark palette...');
+
+  const dark = await openDark(browser, { plugin: 'glpipalette', viewport: { width: 1500, height: 1000 } });
+
+  await dark.goto(`${BASE}/front/central.php`, { waitUntil: 'networkidle' });
+  await dark.keyboard.press('Control+k');
+  await dark.waitForTimeout(700);
+
+  let darkState = await dump(dark);
+  check('[dark] the palette opens on the dark palette too', darkState.open,
+    `groups=${darkState.groups.join('/')}`);
+
+  await type(dark, 'laptop');
+  darkState = await dump(dark);
+  check('[dark] and still finds records', darkState.rows.length > 0,
+    darkState.rows.slice(0, 2).map((r) => r.title).join(' | '));
+
+  let bad = await audit(dark, 'glpipalette-');
+  check('[dark] no near-white panel carrying dark-body text',
+    bad.whiteBg.length === 0, JSON.stringify(bad.whiteBg));
+  check('[dark] muted text meets 4.5:1 against its real background',
+    bad.lowContrast.length === 0, JSON.stringify(bad.lowContrast));
+
+  await dark.screenshot({ path: `${DARK_SHOTS}/palette-dark-01-search.png` });
+
+  await type(dark, '>ticket');
+  await dark.screenshot({ path: `${DARK_SHOTS}/palette-dark-02-commands.png` });
+
+  await dark.goto(`${BASE}/plugins/glpipalette/front/config.php`, { waitUntil: 'networkidle' });
+  await dark.waitForTimeout(400);
+  bad = await audit(dark, 'glpipalette-');
+  check('[dark] the settings page has no near-white panel',
+    bad.whiteBg.length === 0, JSON.stringify(bad.whiteBg));
+  await dark.screenshot({ path: `${DARK_SHOTS}/palette-dark-03-settings.png` });
+
+  check('[dark] no page errors', dark.__darkErrors.length === 0, dark.__darkErrors.join(' | '));
 
   await browser.close();
   console.log(fail.length ? `\n${fail.length} FAILED: ${fail.join(', ')}` : '\nall checks passed');
