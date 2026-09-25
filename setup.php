@@ -15,7 +15,7 @@
  */
 
 define('PLUGIN_GLPIPALETTE_VERSION', '0.1.0');
-define('PLUGIN_GLPIPALETTE_MIN_GLPI', '10.0');
+define('PLUGIN_GLPIPALETTE_MIN_GLPI', '12.0');
 define('PLUGIN_GLPIPALETTE_CONFIG_CONTEXT', 'plugin:glpipalette');
 
 function plugin_init_glpipalette()
